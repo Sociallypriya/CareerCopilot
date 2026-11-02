@@ -4,7 +4,7 @@ const { parseRecruiterEmail } = require("../utils/geminiAgent");
 //GET /api/applications
 exports.getApplications = async (req, res) => {
     try{
-        const filter = {};
+        const filter = { owner: req.user._id };
         if(req.query.stage) filter.stage = req.query.stage;
         const apps = await Application.find(filter).sort({ updatedAt: -1 });
         res.json(apps);
@@ -16,7 +16,7 @@ exports.getApplications = async (req, res) => {
 // GET /api/applications/:id
 exports.getApplicationById = async (req, res) => {
   try {
-    const app = await Application.findById(req.params.id);
+    const app = await Application.findOne({ _id: req.params.id, owner: req.user._id });
     if (!app) return res.status(404).json({ message: "Application not found" });
     res.json(app);
   } catch (err) {
@@ -27,14 +27,16 @@ exports.getApplicationById = async (req, res) => {
 // PUT /api/applications/:id
 exports.updateApplication = async (req, res) => {
     try{
-        const existing = await Application.findById(req.params.id);
+        const existing = await Application.findOne({ _id: req.params.id, owner: req.user._id });
         if(!existing) return res.status(404).json({ message: "Application not found" });
 
         if( req.body.followUpDate && new Date(req.body.followUpDate).getTime() !== new Date(existing.followUpDate).getTime()){
             req.body.reminderAcknowledged = false;
         }
 
-        const updated = await Application.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true});
+        const updates = { ...req.body };
+        delete updates.owner;
+        const updated = await Application.findOneAndUpdate({ _id: req.params.id, owner: req.user._id }, updates, { new: true, runValidators: true});
         res.json(updated);
     } catch (err) {
         res.status(400).json({ message: err.message });
@@ -47,6 +49,7 @@ exports.getDueReminders = async (req, res) => {
     const today = new Date();
     today.setHours(23, 59, 59, 999);
     const due = await Application.find({
+      owner: req.user._id,
       followUpDate: { $lte: today },
       reminderAcknowledged: false,
       stage: { $nin: ["Rejected", "Offer", "Ghosted"] },
@@ -60,7 +63,7 @@ exports.getDueReminders = async (req, res) => {
 // POST /api/applications
 exports.createApplication = async (req, res) => {
   try {
-    const app = await Application.create(req.body);
+    const app = await Application.create({ ...req.body, owner: req.user._id });
     res.status(201).json(app);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -71,7 +74,7 @@ exports.createApplication = async (req, res) => {
 // DELETE /api/applications/:id
 exports.deleteApplication = async (req, res) => {
   try {
-    const app = await Application.findByIdAndDelete(req.params.id);
+    const app = await Application.findOneAndDelete({ _id: req.params.id, owner: req.user._id });
     if (!app) return res.status(404).json({ message: "Application not found" });
     res.json({ message: "Deleted" });
   } catch (err) {
@@ -82,7 +85,7 @@ exports.deleteApplication = async (req, res) => {
 // POST /api/applications/:id/notes  { text }
 exports.addNote = async (req, res) => {
   try {
-    const app = await Application.findById(req.params.id);
+    const app = await Application.findOne({ _id: req.params.id, owner: req.user._id });
     if (!app) return res.status(404).json({ message: "Application not found" });
     app.notes.push({ text: req.body.text });
     await app.save();
@@ -101,7 +104,7 @@ exports.parseEmailAndUpdate = async (req, res) => {
       return res.status(400).json({ message: "rawText is required" });
     }
 
-    const app = await Application.findById(req.params.id);
+    const app = await Application.findOne({ _id: req.params.id, owner: req.user._id });
     if (!app) return res.status(404).json({ message: "Application not found" });
 
     const extraction = await parseRecruiterEmail(rawText);

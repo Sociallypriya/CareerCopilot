@@ -27,6 +27,8 @@ const applicationSchema = new mongoose.Schema(
 
         resumeVersionUsed: { type: String, trim: true },
         ctcDiscussed: { type: String, trim: true },
+        ctcCurrency: { type: String, enum: ["INR", "USD", "GBP", "EUR", "AED", "SGD", "JPY", "AUD"], default: "INR" },
+        owner: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true, index: true },
 
         notes: [noteSchema],
 
