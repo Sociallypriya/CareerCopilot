@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthPage, LandingPage } from './AuthPages.jsx';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
@@ -52,7 +52,8 @@ function Dashboard({ user, onLogout }) {
   const [settings, setSettings] = useState({ profileName: '', profileEmail: '', workspaceName: 'My workspace', timezone: 'Asia/Kolkata', currency: 'INR' });
   const [settingsForm, setSettingsForm] = useState({ profileName: '', profileEmail: '', workspaceName: 'My workspace', timezone: 'Asia/Kolkata', currency: 'INR' });
   const [settingsScreen, setSettingsScreen] = useState(null);
-  const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef(null);
 
   const notify = useCallback((message, error = false) => {
     setToast({ message, error });
@@ -67,6 +68,21 @@ function Dashboard({ user, onLogout }) {
     finally { setLoading(false); }
   }, [notify]);
   useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!profileMenuOpen) return;
+    const closeOnOutsideClick = event => {
+      if (!profileMenuRef.current?.contains(event.target)) setProfileMenuOpen(false);
+    };
+    const closeOnEscape = event => {
+      if (event.key === 'Escape') setProfileMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', closeOnOutsideClick);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', closeOnOutsideClick);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [profileMenuOpen]);
 
   const dueIds = useMemo(() => new Set(dueReminders.map(item => item._id)), [dueReminders]);
   const dueCount = applications.filter(app => dueIds.has(app._id) || dueNow(app)).length;
@@ -154,12 +170,12 @@ function Dashboard({ user, onLogout }) {
         <button className={`nav-link ${view === 'all' ? 'active' : ''}`} onClick={() => setView('all')}><span className="nav-icon">▦</span> All applications <span className="nav-count">{applications.length}</span></button>
         <button className={`nav-link ${activeView ? 'active' : ''}`} onClick={() => setView('reminders')}><span className="nav-icon">◷</span> Follow-ups <span className="nav-count alert-count">{dueCount || ''}</span></button>
       </nav>
-      <div className="sidebar-bottom"><button type="button" className="help-card" onClick={() => { if (nextMove.type === 'due') { setSearch(''); setStageFilter(''); setView('reminders'); } else if (nextMove.type === 'upcoming') openDetails(nextMove.application._id); else if (nextMove.type === 'set-follow-up') openEdit(nextMove.application); else openCreate(); }}><span className="help-spark">{nextMove.type === 'due' ? '◷' : '✦'}</span><strong>{nextMove.type === 'due' ? 'A follow-up is due' : nextMove.type === 'upcoming' ? 'Your next follow-up' : nextMove.type === 'set-follow-up' ? 'Keep an opportunity moving' : 'Start your job search'}</strong><p>{nextMove.type === 'due' ? `Check in with ${nextMove.application.company} about ${nextMove.application.role}.` : nextMove.type === 'upcoming' ? `${nextMove.application.company} · ${escapeDate(nextMove.application.followUpDate, settings.timezone)}` : nextMove.type === 'set-follow-up' ? `Set a follow-up date for ${nextMove.application.company}.` : 'Add your first application to start tracking next steps.'}</p><span className="help-link">{nextMove.type === 'due' ? 'Review follow-ups →' : nextMove.type === 'upcoming' ? 'View application →' : nextMove.type === 'set-follow-up' ? 'Set follow-up →' : 'Add application →'}</span></button><div className="user-chip"><div className="avatar">{initials(settings.profileName || user.name || 'P')}</div><div><strong>{settings.workspaceName}</strong><small>{settings.profileName || user.name}</small></div><button className="more" type="button" aria-label="Open profile and workspace settings" aria-haspopup="menu" aria-expanded={settingsMenuOpen} onClick={() => setSettingsMenuOpen(open => !open)}>⋮</button></div>{settingsMenuOpen && <div className="workspace-menu" role="menu"><div className="workspace-menu-title">Settings</div><button type="button" role="menuitem" onClick={() => openSettings('profile')}>♙ <span>Profile</span></button><button type="button" role="menuitem" onClick={() => openSettings('workspace')}>⚙ <span>Workspace settings</span></button><button type="button" role="menuitem" onClick={onLogout}>↪ <span>Sign out</span></button></div>}</div>
+      <div className="sidebar-bottom"><button type="button" className="help-card" onClick={() => { if (nextMove.type === 'due') { setSearch(''); setStageFilter(''); setView('reminders'); } else if (nextMove.type === 'upcoming') openDetails(nextMove.application._id); else if (nextMove.type === 'set-follow-up') openEdit(nextMove.application); else openCreate(); }}><span className="help-spark">{nextMove.type === 'due' ? '◷' : '✦'}</span><strong>{nextMove.type === 'due' ? 'A follow-up is due' : nextMove.type === 'upcoming' ? 'Your next follow-up' : nextMove.type === 'set-follow-up' ? 'Keep an opportunity moving' : 'Start your job search'}</strong><p>{nextMove.type === 'due' ? `Check in with ${nextMove.application.company} about ${nextMove.application.role}.` : nextMove.type === 'upcoming' ? `${nextMove.application.company} · ${escapeDate(nextMove.application.followUpDate, settings.timezone)}` : nextMove.type === 'set-follow-up' ? `Set a follow-up date for ${nextMove.application.company}.` : 'Add your first application to start tracking next steps.'}</p><span className="help-link">{nextMove.type === 'due' ? 'Review follow-ups →' : nextMove.type === 'upcoming' ? 'View application →' : nextMove.type === 'set-follow-up' ? 'Set follow-up →' : 'Add application →'}</span></button><div className="user-chip"><div className="avatar">{initials(settings.profileName || user.name || 'P')}</div><div><strong>{settings.workspaceName}</strong><small>{settings.profileName || user.name}</small></div></div></div>
     </aside>
     <main className="main-area">
-      <header className="topbar"><div className="breadcrumb">{settings.workspaceName} <span>/</span> <strong>{activeView ? 'Follow-ups' : 'All applications'}</strong></div><div className="top-actions"><span className="today-label">{new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: settings.timezone }).format(new Date())}</span><button className="icon-button" onClick={load} title="Refresh applications" aria-label="Refresh">↻</button><button type="button" className="avatar small-avatar profile-avatar-button" onClick={() => openSettings('profile')} title="Edit profile" aria-label="Open profile settings">{initials(settings.profileName || 'P')}</button></div></header>
+      <header className="topbar"><span className="brand-mark mobile-brand-mark" aria-label="CareerCopilot">C</span><div className="breadcrumb">{settings.workspaceName}<span>/</span><strong>{activeView ? 'Follow-ups' : 'All applications'}</strong></div><div className="top-actions" ref={profileMenuRef}><span className="today-label">{new Intl.DateTimeFormat(undefined, { weekday: 'short', month: 'short', day: 'numeric', timeZone: settings.timezone }).format(new Date())}</span><button className="icon-button" onClick={load} title="Refresh applications" aria-label="Refresh">↻</button><button type="button" className="avatar small-avatar profile-avatar-button" onClick={() => setProfileMenuOpen(open => !open)} title="Open profile menu" aria-label="Open profile menu" aria-haspopup="menu" aria-expanded={profileMenuOpen}>{initials(settings.profileName || user.name || 'P')}</button>{profileMenuOpen && <div className="profile-menu" role="menu"><div className="profile-menu-summary"><div className="profile-menu-avatar">{initials(settings.profileName || user.name || 'P')}</div><strong>{settings.profileName || user.name || 'Your profile'}</strong><small>{settings.profileEmail || user.email || ''}</small><button type="button" className="manage-profile" onClick={() => { setProfileMenuOpen(false); openSettings('profile'); }}>Manage profile</button></div><div className="profile-menu-section"><button type="button" role="menuitem" onClick={() => { setView('all'); setProfileMenuOpen(false); }}>▦ <span>All applications</span></button><button type="button" role="menuitem" onClick={() => { setView('reminders'); setProfileMenuOpen(false); }}>◷ <span>Follow-ups</span></button><button type="button" role="menuitem" onClick={() => { setProfileMenuOpen(false); openSettings('workspace'); }}>⚙ <span>Workspace settings</span></button></div><div className="profile-menu-bottom"><button type="button" role="menuitem" onClick={onLogout}>↪ <span>Sign out</span></button></div></div>}</div></header>
       <section className="page-content">
-        <div className="page-heading"><div><div className="eyebrow">YOUR JOB SEARCH, IN ONE PLACE</div><h1>{activeView ? 'Follow-ups' : 'Applications'}</h1><p className="page-subtitle">{activeView ? 'A timely follow-up can keep a good conversation moving.' : 'A clear view of every opportunity and what to do next.'}</p></div><button className="primary-button" onClick={openCreate}><span>＋</span> Add application</button></div>
+        <div className="page-heading"><div><div className="eyebrow">YOUR JOB SEARCH, IN ONE PLACE</div><h1>{activeView ? 'Follow-ups' : 'Applications'}</h1><p className="page-subtitle">{activeView ? 'A timely follow-up can keep a good conversation moving.' : 'A clear view of every opportunity and what to do next.'}</p></div><button className="primary-button" onClick={openCreate} aria-label="Add application"><span className="button-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></span><span className="button-label">Add application</span></button></div>
         <div className="stats-grid">
           <Stat label="Total applications" value={applications.length} foot="Across your job search" icon="▦" tone="lavender" />
           <Stat label="In progress" value={applications.filter(app => ACTIVE.includes(app.stage)).length} foot="Active opportunities" icon="↗" tone="blue" />
