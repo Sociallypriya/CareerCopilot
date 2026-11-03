@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './auth.css';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
 export function LandingPage({ navigate, user }) {
   return <main className="marketing-page">
@@ -26,14 +26,25 @@ export function AuthPage({ mode = 'login', navigate, onSuccess }) {
   async function submit(event) {
     event.preventDefault(); setBusy(true); setError('');
     try {
+      if (import.meta.env.PROD && !API_BASE) {
+        throw new Error('The API URL is not configured for this deployment. Set VITE_API_BASE_URL to your backend service URL in Render, then redeploy the frontend.');
+      }
       const response = await fetch(`${API_BASE}/api/auth/${signup ? 'register' : 'login'}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...(signup ? { name } : {}), email, password }),
       });
+      if (!response.headers.get('content-type')?.includes('application/json')) {
+        throw new Error('The configured API did not return JSON. Check that VITE_API_BASE_URL points to your backend service in Render.');
+      }
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || 'Could not sign in. Please try again.');
+      if (!data.token || !data.user) throw new Error('The API response was incomplete. Check the backend deployment and try again.');
       onSuccess(data);
-    } catch (submitError) { setError(submitError.message); }
+    } catch (submitError) {
+      setError(submitError instanceof TypeError
+        ? 'Could not connect to the API. Check the backend URL and CLIENT_URL settings in Render.'
+        : submitError.message || 'Could not sign in. Please try again.');
+    }
     finally { setBusy(false); }
   }
 

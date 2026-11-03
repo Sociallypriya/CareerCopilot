@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthPage, LandingPage } from './AuthPages.jsx';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 const API = `${API_BASE}/api/applications`;
 const STAGES = ['Applied', 'OA', 'Interview', 'Offer', 'Rejected', 'Ghosted'];
 const SOURCES = ['Other', 'LinkedIn', 'Referral', 'Walk-in', 'Naukri', 'Company Site', 'Instagram'];
