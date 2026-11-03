@@ -19,6 +19,7 @@ export function AuthPage({ mode = 'login', navigate, onSuccess }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -40,7 +41,7 @@ export function AuthPage({ mode = 'login', navigate, onSuccess }) {
     <section className="auth-form-side"><div className="auth-form-wrap"><button className="back-home" onClick={() => navigate('/')}>← Back to home</button><div className="auth-heading"><span className="eyebrow">{signup ? 'YOUR SEARCH, IN ONE PLACE' : 'WELCOME BACK'}</span><h2>{signup ? 'Create your account' : 'Sign in to CareerCopilot'}</h2><p>{signup ? 'It only takes a minute to get started.' : 'Enter your details to open your workspace.'}</p></div><form className="auth-form" onSubmit={submit}>
       {signup && <label>Your name<input autoComplete="name" required minLength={2} value={name} onChange={event => setName(event.target.value)} placeholder="e.g. Priya Kumari" /></label>}
       <label>Email address<input type="email" autoComplete="email" required value={email} onChange={event => setEmail(event.target.value)} placeholder="you@example.com" /></label>
-      <label>Password<input type="password" autoComplete={signup ? 'new-password' : 'current-password'} required minLength={signup ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} placeholder={signup ? 'At least 8 characters' : 'Your password'} /></label>
+      <label>Password<div className="password-field"><input type={showPassword ? 'text' : 'password'} autoComplete={signup ? 'new-password' : 'current-password'} required minLength={signup ? 8 : undefined} value={password} onChange={event => setPassword(event.target.value)} placeholder={signup ? 'At least 8 characters' : 'Your password'} /><button type="button" className="password-toggle" onClick={() => setShowPassword(visible => !visible)} aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.7"/>{showPassword && <path d="m4 4 16 16"/>}</svg></button></div></label>
       {error && <div className="auth-error" role="alert">{error}</div>}
       <button className="primary-button auth-submit" type="submit" disabled={busy}>{busy ? 'Please wait…' : signup ? 'Create account' : 'Sign in'} <span>→</span></button>
     </form><div className="auth-switch">{signup ? 'Already have an account?' : 'New to CareerCopilot?'} <button onClick={() => navigate(signup ? '/login' : '/signup')}>{signup ? 'Sign in' : 'Create an account'}</button></div><p className="auth-privacy">Your applications and profile are private to your account.</p></div></section>
